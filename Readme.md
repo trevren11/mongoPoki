@@ -99,7 +99,7 @@ Go ahead and run `npm start` in your terminal again, and you should expect to se
 ## Inserting data
 
 ##### 1. Make a 'pokemon' collection
-Let's put that collection variable we already declared to work. Notice that in the callback funciont we provided to `MongoClient.connect`, we expect to receive a `db` variable. We will use that to create a `pokemon` collection like so:
+Let's put that collection variable we already declared to work. Notice that in the callback function we provided to `MongoClient.connect`, we expect to receive a `db` variable. We will use that to create a `pokemon` collection like so:
 
 ```js
 collection = db.collection('pokemon');
@@ -120,7 +120,7 @@ collection.insert(pokemon, function (err, result) {
   
   // Close connection
   db.close()
-}
+});
 ```
 
 All said and done our code connecting to the db and inserting our array of pokemon into the database should look something like the following:
@@ -136,6 +136,7 @@ MongoClient.connect(dbUrl, function (err, db) {
 
     // do some work here with the database.
     collection = db.collection('pokemon');
+    collection.remove(); // Remove anything that was there before
     collection.insert(pokemon, function (err, result) {
       if (err) {
         console.log(err);
@@ -143,8 +144,8 @@ MongoClient.connect(dbUrl, function (err, db) {
         console.log('Inserted %d documents into the "pokemon" collection. The documents inserted with "_id" are:', result.length, result);
       }
 
-      // Close connection
-      db.close();
+      // Dont Close the connection, so we can use it in other routes
+      // db.close();
     })
   }
 });
@@ -154,61 +155,55 @@ If we run `npm start` we should expect a log telling us we have an established c
 
 ## Retrieving data
 
-Sadly, if we look in our browser, we still only see red. That's because we aren't returning any data when the pathname is `/pokemon`. We want to return this data from the mongo database.
+Now we need to have our `get` route use data from the database.
 
-##### 1. Define callback that will receive data from the db
-
-Inside the callback function where we create our server, underneat the `TODO` comment, let's add the following optimistic funciton:
-
+The current code just returns the pokimon array
 ```js
-
-/**
- * TODO: return pokemon data stored in mongodb
- */
-
-getPokemonFromDb(function (data) {
-  res.writeHead(200)
-  res.end(JSON.stringify(data))
-})
-
+router.get('/pokemon', function(req, res) {
+  console.log("In Pokemon");
+  res.send(pokemon);
+});
 ```
-This will throw an error if we try to run it because we haven't defined a function named `getPokemonFromDb`. It is good practice though to define _how_ you want to use code you haven't written yet. This promotes better quality code.
-
-##### 2. Define `getPokemonFromDb`
-
-Just above the line with `http.createServer` let's place the following:
-
+Replace it with a call to query the database
 ```js
-function getPokemonFromDb (donOnSuccess) {
-  MongoClient.connect(dbUrl, function (err, db) {
-
-    if (err) {
-      console.log('Unable to connect to the mongoDB server. Error:', err);
+router.get('/pokemon', function(req, res) {
+  console.log("In Pokemon");
+  collection.find().toArray(function(err, result) {
+    if(err) {
+      console.log(err);
+    } else if (result.length) {
+      console.log("Query Worked");
+      console.log(result);
+      res.send(result);
     } else {
-
-      // Get the documents collection
-      var collection = db.collection('pokemon');
-
-      // Get all pokemon from mongodb
-      collection.find({}).toArray(function (err, result) {
-        if (err) {
-          console.log(err);
-        } else if (result.length) {
-          donOnSuccess(result)
-        } else {
-          console.log('No document(s) found with defined "find" criteria!');
-        }
-        // Close connection
-        db.close();
-      });
+      console.log("No Documents found");
     }
   });
-}
+});
+```
+Now we just need to modify the post to put the new pokemon from the form into the database.  We will replace
+```js
+router.post('/pokemon', function(req, res) {
+    console.log("In Pokemon Post");
+    console.log(req.body);
+    pokemon.push(req.body);
+    res.end('{"success" : "Updated Successfully", "status" : 200}');
+});
+```
+with
+```js
+router.post('/pokemon', function(req, res) {
+    console.log("In Pokemon Post");
+    console.log(req.body);
+    collection.insert(req.body, function (err, result) {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log('Inserted %d documents into the "pokemon" collection. The documents inserted with "_id" are:', result.length, result);
+        res.end('{"success" : "Updated Successfully", "status" : 200}');
+      }
+    });
+});
 ```
 
-Now if we run our server (`node api-server.js`) and view the results in the browser, we should expect to see a blue screen with our pokemon gifs running in the view. 
-
-NOTE: If you have run `api-server.js` multiple times since adding the code to insert data into mongo, there will be duplicates of the pokemon data. This demonstrates that the data is persisting between server runs. Because we are not removing data, we add our array of pokemon to the previous inserts each time we execute the code. This will result in more and more pokemon showing up every time the `api-server.js` is run.
-
-For additional learning, you can try to clear the pokemon collection before inserting each time. The method for this is `.remove` and would look similar to `.insert`
 
