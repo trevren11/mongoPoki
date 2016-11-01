@@ -118,8 +118,8 @@ collection.insert(pokemon, function (err, result) {
     console.log('Inserted documents into the "pokemon" collection. The documents inserted with "_id" are:', result.length, result);
   }
   
-  // Close connection
-  db.close()
+  // Dont Close connection
+  // db.close()
 });
 ```
 
