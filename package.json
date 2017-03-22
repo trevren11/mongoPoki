@@ -12,6 +12,7 @@
     "express": "~4.10.6",
     "express-http-proxy": "^0.6.0",
     "jade": "~1.8.2",
+    "mongodb": "^2.2.25",
     "morgan": "~1.5.1",
     "request": "^2.69.0",
     "serve-favicon": "~2.2.0"
